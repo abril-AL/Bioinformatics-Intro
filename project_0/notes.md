@@ -258,7 +258,7 @@ Limitations
 
 ## Summary
 
-`pipelin()` function
+`pipeline()` function
 
 Encoder: Sentence classification, named entity recognition, extractive question answering
 
@@ -270,14 +270,125 @@ Encoder-decoder: Summarization, translation, generative question answering
 
 ## Intro
 
+Library created to manage large models for easy use. 
+
 ## Behind the pipeline
+
+Tokenizer -> Model -> Post Processing
+
+Raw Text -> Input IDs -> Logits -> Predictions
+
+Preprocessing with a tokenizer: splits input into tokens, maps each to an integer, adds additional useful inputs. Once we have tokenizer, we ass it our sentence. 
+
+Tensor: like NumPy arrays. can be scalar, vector, or more dimension. Transformer models *only* accept tensors.
+
+Going through the model: for each model input we get back a high-dimensional vector representing the contextual understanding of that input by the transformer model. (hidden states)
+
+Model Heads: making sense out of numbers
+- takes high-dimensional vector and projects into different dimension 
+- usually a few linear layers
 
 ## Models
 
+'AutoModel' class
+- simple wrappers over the wide variety of models available
+- can automatically guess the appropriate model architecture for your checkpoint, and then instantiates a model with this architecture.
+
+Creating a Transformer
+```python
+# init a BERT model - first load a config obj
+from transformers import BertConfig, BertModel
+
+# Building the config
+config = BertConfig() # attributes for building the model
+
+# Building the model from the config
+model = BertModel(config)
+```
+
+Different Loading Methods
+- initialized with random values
+```python
+from transformers import BertConfig, BertModel
+
+config = BertConfig()
+model = BertModel(config)
+```
+- will ouput gibbereish, needs to be trained - needs time and data!
+- instead will load a transformer that is already trained:
+```python
+from transformers import BertModel
+model = BertModel.from_pretrained("bert-base-cased")
+```
+
+Saving Methods
+- use the `save_pretrained()` method
+- `model.save_pretrained("directory_on_my_computer")`
+- saves files to disk: attributes config, and state dictionary (model weights)
+
+Using a Transformer model for inference
+- tokenizer does input to appropriate tensor
+- then pass to model - just call it
+	- `output = model(model_inputs)`
+	- where `model_inputs = torch.tensor(encoded_seq)'
+
 ## Tokenizers
 
-## Handling Multiple Sequences
+Purpose: translate text into data that can be processed by the model
+
+Ex. Word Based, easy, decent results
+
+Ex. Character-based, smaller vocabulary, less meaningful tokens
+
+Subword Tokenization
+- frequently used words should not be split into smaller subwords, but rare words should be decomposed into meaningful subwords.
+- provide more semantic meaning
+
+Loading and Saving
+- simple to ld/sv tokenizers
+```python
+from transformers import BertTokenizer
+tokenizer = BertTokenizer.from_pretrained("bert-base-cased")
+```
+
+Encoding
+- translating text to numbers
+- two steps: tokenization then conversion to input IDs
+- that way we acn build a tensor out of them and feed into the model
+
+Deconding: go from vocab indices to a string
+
+##  Handling Multiple Sequences
+
+Transformers models expect multiple sentences by default
+
+Batching: act of sending multiple sentences through the model, all at once
+
+Padding the inputs: use to make tensor have the right shape, add padding token
+
+Attention masks
+- tensors with the exact same shape as the input IDs tensor, filled with 0s and 1s
+- 1 - indicate the corresponding tokens should be attended to
+- 0 - indicate the corresponding tokens should not be attended to (ignore)
+
+Longer sequences
+- limit to lengths of sequences
+- solns: use diff model or truncate sequence
 
 ## Putting it all together
+
+how it can handle multiple sequences (padding!), very long sequences (truncation!), and multiple types of tensors with its main API:
+```python
+import torch
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
+checkpoint = "distilbert-base-uncased-finetuned-sst-2-english"
+tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+model = AutoModelForSequenceClassification.from_pretrained(checkpoint)
+sequences = ["I've been waiting for a HuggingFace course my whole life.", "So have I!"]
+
+tokens = tokenizer(sequences, padding=True, truncation=True, return_tensors="pt")
+output = model(**tokens)
+```
 
 ## Basic Usage Completed

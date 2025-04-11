@@ -120,6 +120,66 @@ ESM - Evolutionary Scale Model
 - predict protein secondary structures
 - p1 or p2 (details later)
 
+# Discussion Week 2
+
+## Recap
+- DNA -> RNA -> Protein
+- Transformers and LLMs
+
+Codon Translation
+- 64 possible codons
+- 20 possible amino acids
+
+Amino acods have different biochemical properties
+- what causes them to fold in different ways
+
+Structural Biology
+- bio chem properties det structure and function
+- needs to be folded and modified to achieve its final function in the correct part of the cell
+
+What can we use a protein language model for?
+- equate natural language to protein AA sequences
+- comes down to the representation of protein the model is using
+	- then the task can be whatever
+
+ESM
+- applies transformer archivtecture to protein sequences
+	- specialized for proteins
+
+AlphaFold
+
+Protein 3d structure
+- PDB: dataset for protein 3d structure
+- alphafold uses this to train the model
+- "groundtruth" datasets
+
+## Project 1
+
+Protein Language Models
+- Goal: predict sec. struct. of prot.s from amino acid sequences using modern machine learning methods like protein language models (e.g. ESM)
+
+Problem Setup
+- Label classes
+	- H - alpha-helix
+	- E - beta-strand
+	- R = turn
+	- S = bend
+	- . = none
+	- total of 9 possible labels
+- Input Files
+	- train.tsv: labeled data
+	- test.tsv: unlabaled test data
+	- sequences.fasta: full amino acid sequences
+
+ESM as a sol
+
+laptop died...
+
+
+
+
+
+
 
 
 
