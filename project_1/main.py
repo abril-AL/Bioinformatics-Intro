@@ -36,16 +36,47 @@ for df in [train_df, test_df]: # Add id and pos to dataframe
 
 # --- STEP 2: Feature Extraction ---
 from transformers import AutoTokenizer, AutoModel
+from tqdm import tqdm
+import pickle
 import torch
+import time
+import os
 
 # load esm model
 model_name = "facebook/esm2_t6_8M_UR50D"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModel.from_pretrained(model_name)
 
-# Generate ESM embeddings - tokenize protein sequence
-# seq_dict[(protein_id, position)] = embedding_vector
+# try to use GPU
+#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#model.to(device)
 
+# Generate ESM embeddings - tokenize protein sequence
+embedding_cache_file = "esm_embeddings.pkl"
+if os.path.exists(embedding_cache_file):
+    # cache so i dont kill my laptop
+    with open(embedding_cache_file, "rb") as f:
+        embedding_dict = pickle.load(f)
+    print("Loaded cached embeddings from file.")
+else:
+    embedding_dict = {}
+    for protein_id, sequence in tqdm(seq_dict.items(), desc="Embedding proteins", unit="seq"):
+        inputs = tokenizer(sequence, return_tensors="pt", truncation=True)
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+
+        with torch.no_grad():
+            outputs = model(**inputs)
+
+        # Shape: (seq_len, hidden_dim)
+        token_embeddings = outputs.last_hidden_state[0, 1:-1, :]  # slice off start/end tokens
+
+        for i, emb in enumerate(token_embeddings):
+            embedding_dict[(protein_id, i + 1)] = emb.cpu().numpy()  # 1-based indexing
+
+    # Save embeddings to disk
+    with open(embedding_cache_file, "wb") as f:
+        pickle.dump(embedding_dict, f)
+    print("Saved embeddings to disk.")
 
 # --- STEP 3: Split Data Set ---
 
