@@ -160,6 +160,35 @@ print("\n=== Validation Performance ===")
 print(classification_report(val_y_encoded, y_pred, target_names=label_encoder.classes_))
 
 # --- STEP 5: Made Predictions ---
+import pandas as pd
+import numpy as np
 
+predictions = []
+missing = 0
+
+for _, row in tqdm(test_df.iterrows(), total=len(test_df), desc="Predicting test.tsv"):
+    key = (row["protein_id"], row["residue_index"])
+
+    if key in embedding_dict:
+        embedding = embedding_dict[key]
+        
+        # If using feature scaling during training, apply it here too
+        embedding = np.array(embedding).reshape(1, -1)
+
+        pred = clf.predict(embedding)
+        pred_label = label_encoder.inverse_transform(pred)[0]
+        predictions.append(pred_label)
+    else:
+        missing += 1
+        predictions.append('.')  # placeholder or fallback prediction
+
+print(f"✅ Done predicting. Missing embeddings: {missing}")
+
+# Add predictions to test_df and save
+test_df["prediction"] = predictions
 
 # --- STEP 6: Export or Codabench Submission ---
+
+# Output: match Codabench format — id and prediction, no header, tab-separated
+test_df[["id", "prediction"]].to_csv("predictions.csv", sep="\t", index=False, header=False)
+
