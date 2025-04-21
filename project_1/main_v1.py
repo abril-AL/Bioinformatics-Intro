@@ -84,7 +84,7 @@ else:
         token_embeddings = outputs.last_hidden_state[0, 1:-1, :]  # slice off start/end tokens
 
         for i, emb in enumerate(token_embeddings):
-            embedding_dict[(protein_id, i + 1)] = emb.cpu().numpy()  # 1-based indexing
+            embedding_dict[(protein_id, i + 1)] = emb.cpu().numpy()[:50]  # 1-based indexing
 
     # Save embeddings to disk
     with open(embedding_cache_file, "wb") as f:
@@ -110,6 +110,7 @@ if DB:
     print("Extracting Features...")
 
 batching.process_and_save_batches(train_df, embedding_dict, batch_size=25_000)
+
 
 import glob
 
