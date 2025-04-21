@@ -176,10 +176,6 @@ ESM as a sol
 laptop died...
 
 
+# Discussion Week 3
 
-
-
-
-
-
-
+check slides for tips and demos on how to do p1
