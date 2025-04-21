@@ -51,13 +51,15 @@ import torch
 import time
 
 # load esm model
-print("Loading ESM model")
+if DB:
+    print("Loading ESM model")
 model_name = "facebook/esm2_t6_8M_UR50D"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModel.from_pretrained(model_name)
 
 # try to use GPU
-print("Checking for GPU")
+if DB:
+    print("Checking for GPU")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
@@ -90,11 +92,74 @@ else:
     print("Saved embeddings to disk.")
 
 # --- STEP 3: Split Data Set ---
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import classification_report
+
+import batching
+
+# classifiers im trying
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import SGDClassifier
+
+# extract features and labels from training data
+
+if DB:
+    print("Extracting Features...")
+
+batching.process_and_save_batches(train_df, embedding_dict, batch_size=25_000)
+
+import glob
+
+# Step 3.5: Set aside one batch for validation, train on the rest
+x_batches = sorted(glob.glob("train_X_*.npy"))
+y_batches = sorted(glob.glob("train_y_*.npy"))
+total_batches = len(x_batches)
+
+# Use last batch for validation
+val_X = np.load(x_batches[-1])
+val_y = np.load(y_batches[-1])
+
+label_encoder = LabelEncoder()
+val_y_encoded = label_encoder.fit_transform(val_y)
 
 # --- STEP 4: Train Classifier --- 
+if DB:
+    print("Training Random Forest...")
 
+# Train on all other batches
+clf = SGDClassifier(loss='log_loss',  # logistic regression
+                    max_iter=2,       # only 1 iteration per partial_fit call
+                    learning_rate='optimal',
+                    warm_start=True)
 
-# --- STEP 5: Made Predictions --- 
+for i in range(total_batches - 1):  # Leave one batch for validation
+    print(f"\tTrained on batch {i+1}/{total_batches-1}")
+    X = np.load(x_batches[i])
+    y = np.load(y_batches[i])
+    y_encoded = label_encoder.transform(y)
+
+    if i == 0:
+        clf.partial_fit(X, y_encoded, classes=np.unique(val_y_encoded))  # first batch must define all classes
+    else:
+        clf.partial_fit(X, y_encoded)
+
+def batched_predict(clf, X_val, batch_size=100000):
+    preds = []
+    for i in tqdm(range(0, len(X_val), batch_size), desc="Predicting in batches"):
+        batch = X_val[i:i + batch_size]
+        batch_preds = clf.predict(batch)
+        preds.append(batch_preds)
+    return np.concatenate(preds)
+
+y_pred = batched_predict(clf, val_X)
+
+print("\n=== Validation Performance ===")
+print(classification_report(val_y_encoded, y_pred, target_names=label_encoder.classes_))
+
+# --- STEP 5: Made Predictions ---
 
 
 # --- STEP 6: Export or Codabench Submission ---
