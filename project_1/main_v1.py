@@ -84,7 +84,7 @@ else:
         token_embeddings = outputs.last_hidden_state[0, 1:-1, :]  # slice off start/end tokens
 
         for i, emb in enumerate(token_embeddings):
-            embedding_dict[(protein_id, i + 1)] = emb.cpu().numpy()[:50]  # 1-based indexing
+            embedding_dict[(protein_id, i + 1)] = emb.cpu().numpy()  # 1-based indexing
 
     # Save embeddings to disk
     with open(embedding_cache_file, "wb") as f:
@@ -111,7 +111,6 @@ if DB:
 
 batching.process_and_save_batches(train_df, embedding_dict, batch_size=25_000)
 
-
 import glob
 
 # Step 3.5: Set aside one batch for validation, train on the rest
@@ -128,12 +127,14 @@ val_y_encoded = label_encoder.fit_transform(val_y)
 
 # --- STEP 4: Train Classifier --- 
 if DB:
-    print("Training Random Forest...")
+    print("Training SGD Classifier...")
 
 # Train on all other batches
 clf = SGDClassifier(loss='log_loss',  # logistic regression
-                    max_iter=2,       # only 1 iteration per partial_fit call
+                    max_iter=20, 
                     learning_rate='optimal',
+                    alpha=1e-3, # generalize better ?
+                    penalty='l2',
                     warm_start=True)
 
 for i in range(total_batches - 1):  # Leave one batch for validation
@@ -183,7 +184,7 @@ for _, row in tqdm(test_df.iterrows(), total=len(test_df), desc="Predicting test
         missing += 1
         predictions.append('.')  # placeholder or fallback prediction
 
-print(f"✅ Done predicting. Missing embeddings: {missing}")
+print(f"Done predicting. Missing embeddings: {missing}")
 
 # Add predictions to test_df and save
 test_df["prediction"] = predictions
